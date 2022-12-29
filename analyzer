@@ -1,0 +1,172 @@
+def get_file_counts(filename):
+    """
+    this function takes a filename and returns a dictionary with the number of times each word occurred in that file
+    :param filename: input is a file
+    :return: dictionary with the number of times each word occurred in that file
+    """
+
+    file = open(filename, "r")  # opens the file
+    d = {}  # empty dictionary
+
+    for line in file:
+        words = line.split()  # splits the line into a list of words
+        for word in words:
+            if word in d:
+                d[word] = d[word] + 1  # if word in already in the dictionary, adds one to the value
+            else:
+                d[word] = 1  # otherwise, makes the value 1
+
+    file.close()  # closes the file
+    return d
+
+# 2
+
+
+def counts_to_probs(dictionary, num):
+    """
+    this function takes a dictionary and a number and generates a new
+    dictionary with the same keys where each value has been divided by the input number
+    :param dictionary: input is a dictionary
+    :param num: a number that divides the values
+    :return: each value in the dictionary is divided by the number
+    """
+
+    new_d = {}
+    for key in dictionary:  # for every key in dictionary
+        counts = dictionary[key]/num  # divides the value by the number
+        new_d[key] = counts  # the new value gets added to the new dictionary with the same keys
+
+    return new_d
+
+# 3
+
+
+def train_model(filename):
+    """
+    this function takes as input a filename containing examples and returns a dictionary with the word probabilities
+    :param filename: input is a file
+    :return: dictionary of word probabilities
+    """
+
+    file = open(filename, "r")
+    count = 0  # initial count of probabilities is zero
+    for line in file:
+        line.strip()  # strips the whitespace
+        count = count + 1
+    file.close()
+    return counts_to_probs(get_file_counts(filename), count)  # uses the previous function to get a new dict
+
+# 4
+
+
+def get_probability(prob_dict, review):
+
+    """
+    the function creates a dict of keys with their respective probabilities given a string
+    :param prob_dict: dictionary of word probabilities
+    :param review: a string (representing a review)
+    :return: probability of the review
+    """
+    word_list = review.split()  # splits the review in a list of words
+    value = 1  # initial value is 1
+
+    for word in word_list:
+        word = word.lower()  # lowercase the word
+        if word in prob_dict:
+            value = value * prob_dict[word]  # if word is in the dict, the probability gets multiplied
+        else:
+            value = value * 0.00009  # abstract value is assigned to the probability of the word is unrecognized
+
+    return value
+
+# 5
+
+
+def classify(review, pos_dict, neg_dict):
+    """
+    the function classifies if a statement is positive or negative
+    :param review:  a string representing a review
+    :param pos_dict: the positive model (i.e., a dictionary of word probabilities)
+    :param neg_dict: the negative model (i.e., another dictionary of word probabilities)
+    :return: returns “positive” or “negative” depending on which model has the highest probability for the review
+    """
+
+    # using previous function to find probability
+    pos_prob = get_probability(pos_dict, review)
+    neg_prob = get_probability(neg_dict, review)
+
+    if pos_prob >= neg_prob:  # returns positive if the value of the positive probability is more than the negative
+        return "positive"
+    else:
+        return "negative"  # else, returns negative
+
+# 6
+
+
+def sentiment_analyzer(pos_file, neg_file):
+    """
+    interactive function that tells a user if their input statement is positive or negative
+    :param pos_file: a positive training file
+    :param neg_file: a negative training file
+    :return: none
+    """
+
+    print("Blank line terminates")  # instruction
+    user_input = input("Enter a sentence:")  # prompts the user for an input
+    while user_input != "":  # the while loop works until the input is a blank statement
+        print(classify(str(user_input), train_model(pos_file), train_model(neg_file)))  # using the classify function
+        user_input = input("Enter a sentence:")  # prompts the user for another input
+
+# 7
+
+
+def helper(filename, pos_dict, neg_dict, label):
+    """
+    the helper function produces the labeled count of lines in a file given a positive or negative label
+    as well as the total number of lines in a file
+    :param filename: any file
+    :param pos_dict: a dictionary of positive words with their probabilities
+    :param neg_dict: a dictionary of negative words with their probabilities
+    :param label: positive or negative label
+    :return: a tuple consisting of the labeled counts and the total lines
+    """
+    count = 0  # initializing the counts
+    total = 0
+    file = open(filename, "r")
+    for line in file:
+        answer = classify(line, pos_dict, neg_dict)  # figures out of the line is positive or negative
+        if answer == label:  # if the answer matches the label
+            count = count + 1  # increase the label counts by 1
+        total += 1  # increase the total count by 1
+
+    file.close()
+
+    return (count, total)
+
+
+def get_accuracy(pos_test_file, neg_test_file, pos_train_file, neg_train_file):
+    """
+    the function keeps track of the accuracy of the model
+    :param pos_test_file: a positive file we would test the model on
+    :param neg_test_file: a negative file we would test the model on
+    :param pos_train_file: a positive training file
+    :param neg_train_file: a negative training file
+    :return: none
+    """
+    pos_train_dict = train_model(pos_train_file)  # trains the training file
+    neg_train_dict = train_model(neg_train_file)
+
+    (pos_count, pos_total) = helper(pos_test_file, pos_train_dict, neg_train_dict, "positive")
+    pos_accuracy = pos_count/pos_total  # divides the positive line counts by the total lines using the helper
+
+    (neg_count, neg_total) = helper(neg_test_file, pos_train_dict, neg_train_dict, "negative")
+    neg_accuracy = neg_count/neg_total  # divides the negative line counts by the total lines using the helper
+
+    # adds the positive and negative counts and then divides by the total lines in both the pos and neg files
+    # to compute the total accuracy of the  model
+    total_accuracy = (pos_count + neg_count)/(pos_total + neg_total)
+
+    # prints the results
+    print("Positive accuracy: " + str(pos_accuracy))
+    print("Negative accuracy: " + str(neg_accuracy))
+    print("Total accuracy: " + str(total_accuracy))
